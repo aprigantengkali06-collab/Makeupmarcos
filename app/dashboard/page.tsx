@@ -9,7 +9,10 @@ import {
   AlertCircle, PlusCircle, Menu, X
 } from 'lucide-react'
 import {
-  getCurrentUser, setCurrentUser, getBookings, updateBooking, addBooking,
+  getCurrentUser, setCurrentUser,
+  getBookingsByCustomer, updateBooking, addBooking,
+} from '@/lib/db'
+import {
   getPaket, saveTestimoni, getTestimoni,
   formatRupiah, formatDate, STATUS_LABEL, STATUS_COLOR
 } from '@/lib/data'
@@ -57,15 +60,15 @@ export default function DashboardPage() {
       return
     }
     setUser(u)
-    const allBookings = getBookings().filter(b => b.customerId === u.id)
-    setBookings(allBookings)
+    getBookingsByCustomer(u.id).then(b => setBookings(b))
     setPaketList(getPaket())
     setLoading(false)
   }, [])
 
-  const refreshBookings = () => {
+  const refreshBookings = async () => {
     if (!user) return
-    setBookings(getBookings().filter(b => b.customerId === user.id))
+    const updated = await getBookingsByCustomer(user.id)
+    setBookings(updated)
   }
 
   const handleLogout = () => {
@@ -73,62 +76,58 @@ export default function DashboardPage() {
     window.location.href = '/'
   }
 
-  const handleBookingSubmit = (e: React.FormEvent) => {
+  const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
     setBookingLoading(true)
     const selectedPaket = paketList.find(p => p.id === bookingForm.paketId)
     if (!selectedPaket) return
-    setTimeout(() => {
-      const id = `BK${Date.now()}`
-      addBooking({
-        id,
-        customerId: user.id,
-        customerNama: user.nama,
-        customerEmail: user.email,
-        customerHp: user.noHp,
-        paketId: selectedPaket.id,
-        paketNama: selectedPaket.nama,
-        paketHarga: selectedPaket.harga,
-        tanggalAcara: bookingForm.tanggalAcara,
-        lokasiAcara: bookingForm.lokasiAcara,
-        catatan: bookingForm.catatan,
-        status: 'menunggu_pembayaran',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      })
-      setActiveBookingId(id)
-      setBookingStep(2)
-      setBookingLoading(false)
-    }, 800)
+    const id = `BK${Date.now()}`
+    await addBooking({
+      id,
+      customerId: user.id,
+      customerNama: user.nama,
+      customerEmail: user.email,
+      customerHp: user.noHp,
+      paketId: selectedPaket.id,
+      paketNama: selectedPaket.nama,
+      paketHarga: selectedPaket.harga,
+      tanggalAcara: bookingForm.tanggalAcara,
+      lokasiAcara: bookingForm.lokasiAcara,
+      catatan: bookingForm.catatan,
+      status: 'menunggu_pembayaran',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })
+    setActiveBookingId(id)
+    setBookingStep(2)
+    setBookingLoading(false)
   }
 
-  const handlePaymentUpload = (e: React.FormEvent) => {
+  const handlePaymentUpload = async (e: React.FormEvent) => {
     e.preventDefault()
     setBookingLoading(true)
-    setTimeout(() => {
-      updateBooking(activeBookingId, {
-        status: 'menunggu_konfirmasi',
-        buktiPembayaran: buktiFile || 'uploaded',
-      })
-      refreshBookings()
-      setBookingStep(3)
-      setBookingLoading(false)
-    }, 800)
+    await updateBooking(activeBookingId, {
+      status: 'menunggu_konfirmasi',
+      buktiPembayaran: buktiFile || 'uploaded',
+    })
+    await refreshBookings()
+    setBookingStep(3)
+    setBookingLoading(false)
   }
 
-  const handleUploadExisting = (bookingId: string) => {
+  const handleUploadExisting = async (bookingId: string) => {
     if (!uploadFile) return
-    updateBooking(bookingId, {
+    await updateBooking(bookingId, {
       status: 'menunggu_konfirmasi',
       buktiPembayaran: uploadFile,
     })
     setUploadBookingId(null)
     setUploadFile('')
-    refreshBookings()
+    await refreshBookings()
   }
 
-  const handleTestimoniSubmit = (e: React.FormEvent) => {
+  const handleTestimoniSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
     const booking = bookings.find(b => b.id === testimoniForm.bookingId)
@@ -144,8 +143,8 @@ export default function DashboardPage() {
       foto: `https://placehold.co/60x60?text=${encodeURIComponent(user.nama.substring(0, 2).toUpperCase())}`,
     }
     saveTestimoni([...all, newT])
-    updateBooking(testimoniForm.bookingId, { status: 'selesai' })
-    refreshBookings()
+    await updateBooking(testimoniForm.bookingId, { status: 'selesai' })
+    await refreshBookings()
     setTestimoniSuccess(true)
     setTestimoniForm({ bookingId: '', rating: 5, komentar: '' })
   }

@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getCurrentUser } from '@/lib/data'
-import type { User } from '@/lib/data'
+import { getCurrentUser } from '@/lib/db'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [checking, setChecking] = useState(true)
