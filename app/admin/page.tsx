@@ -6,7 +6,7 @@ import {
   LayoutDashboard, ShoppingBag, Package2, Images, MessageSquare,
   Users, LogOut, ArrowLeft, Menu, X, Plus, Pencil, Trash2,
   CheckCircle2, XCircle, Clock, Eye, ChevronRight,
-  TrendingUp, Star, AlertCircle,
+  TrendingUp, Star, AlertCircle, Upload, Link, Loader2,
 } from 'lucide-react'
 import {
   getAllBookings, updateBooking, getAllCustomers,
@@ -59,6 +59,12 @@ export default function AdminPage() {
   // Galeri form state
   const [showGaleriForm, setShowGaleriForm] = useState(false)
   const [galeriForm, setGaleriForm] = useState({ foto: '', kategori: '', deskripsi: '' })
+  const [galeriUploadMode, setGaleriUploadMode] = useState<'url' | 'file'>('url')
+  const [galeriUploading, setGaleriUploading] = useState(false)
+
+  // Paket upload mode
+  const [paketUploadMode, setPaketUploadMode] = useState<'url' | 'file'>('url')
+  const [paketUploading, setPaketUploading] = useState(false)
 
   // Detail pesanan modal
   const [detailBooking, setDetailBooking] = useState<Booking | null>(null)
@@ -73,6 +79,43 @@ export default function AdminPage() {
     setGaleriList(getGaleri())
     setTestimoniList(getTestimoni())
   }, [])
+
+  // ─── Helper: baca file jadi base64 data URL ─────────────────────────────────
+  const readFileAsBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+
+  const handleGaleriFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setGaleriUploading(true)
+    try {
+      const base64 = await readFileAsBase64(file)
+      setGaleriForm(p => ({ ...p, foto: base64 }))
+    } catch {
+      alert('Gagal membaca file. Coba lagi.')
+    } finally {
+      setGaleriUploading(false)
+    }
+  }
+
+  const handlePaketFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setPaketUploading(true)
+    try {
+      const base64 = await readFileAsBase64(file)
+      setPaketForm(p => ({ ...p, foto: base64 }))
+    } catch {
+      alert('Gagal membaca file. Coba lagi.')
+    } finally {
+      setPaketUploading(false)
+    }
+  }
 
   const handleLogout = () => {
     setCurrentUser(null)
@@ -106,6 +149,7 @@ export default function AdminPage() {
     setEditPaket(null)
     setPaketForm(EMPTY_PAKET)
     setLayananInput('')
+    setPaketUploadMode('url')
     setShowPaketForm(true)
   }
 
@@ -114,6 +158,8 @@ export default function AdminPage() {
     const { id, ...rest } = p
     setPaketForm(rest)
     setLayananInput(p.layanan.join('\n'))
+    // Jika foto adalah base64, set ke mode file; jika URL, set ke mode url
+    setPaketUploadMode(p.foto.startsWith('data:') ? 'file' : 'url')
     setShowPaketForm(true)
   }
 
@@ -151,11 +197,16 @@ export default function AdminPage() {
   // ─── Galeri handlers ────────────────────────────────────────────────────────
   const handleAddGaleri = (e: React.FormEvent) => {
     e.preventDefault()
+    if (!galeriForm.foto) {
+      alert('Foto belum dipilih atau URL belum diisi.')
+      return
+    }
     const newItem: GaleriItem = { id: `g${Date.now()}`, ...galeriForm }
     const newList = [...getGaleri(), newItem]
     saveGaleri(newList)
     setGaleriList(newList)
     setGaleriForm({ foto: '', kategori: '', deskripsi: '' })
+    setGaleriUploadMode('url')
     setShowGaleriForm(false)
   }
 
@@ -620,13 +671,76 @@ export default function AdminPage() {
                         />
                       </div>
                       <div className="sm:col-span-2">
-                        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">URL Foto</label>
-                        <input
-                          value={paketForm.foto}
-                          onChange={e => setPaketForm(p => ({ ...p, foto: e.target.value }))}
-                          placeholder="https://placehold.co/400x500?text=..."
-                          className="w-full px-4 py-2.5 border border-input rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                        />
+                        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Foto Paket</label>
+                        {/* Toggle mode */}
+                        <div className="flex rounded-lg border border-input overflow-hidden mb-2.5">
+                          <button
+                            type="button"
+                            onClick={() => setPaketUploadMode('url')}
+                            className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors ${paketUploadMode === 'url' ? 'bg-primary text-primary-foreground' : 'bg-white hover:bg-muted'}`}
+                          >
+                            <Link size={12} /> URL Link
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPaketUploadMode('file')}
+                            className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors ${paketUploadMode === 'file' ? 'bg-primary text-primary-foreground' : 'bg-white hover:bg-muted'}`}
+                          >
+                            <Upload size={12} /> Upload File
+                          </button>
+                        </div>
+
+                        {paketUploadMode === 'url' ? (
+                          <input
+                            value={paketForm.foto.startsWith('data:') ? '' : paketForm.foto}
+                            onChange={e => setPaketForm(p => ({ ...p, foto: e.target.value }))}
+                            placeholder="https://placehold.co/400x500?text=..."
+                            className="w-full px-4 py-2.5 border border-input rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                          />
+                        ) : (
+                          <div className="space-y-2">
+                            <label className={`flex flex-col items-center justify-center gap-2 w-full h-28 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${paketUploading ? 'opacity-60 cursor-not-allowed border-muted' : 'border-primary/40 hover:bg-primary/5 hover:border-primary/60'}`}>
+                              {paketUploading ? (
+                                <>
+                                  <Loader2 size={22} className="animate-spin text-primary" />
+                                  <span className="text-xs text-muted-foreground">Memuat foto...</span>
+                                </>
+                              ) : paketForm.foto.startsWith('data:') ? (
+                                <>
+                                  <CheckCircle2 size={22} className="text-green-600" />
+                                  <span className="text-xs text-green-700 font-medium">Foto berhasil dimuat</span>
+                                  <span className="text-xs text-muted-foreground">Klik untuk ganti</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Upload size={22} className="text-primary/60" />
+                                  <span className="text-xs text-muted-foreground">Klik untuk pilih foto dari perangkat</span>
+                                  <span className="text-xs text-muted-foreground/60">JPG, PNG, WEBP — maks. 5 MB</span>
+                                </>
+                              )}
+                              <input
+                                type="file"
+                                accept="image/*"
+                                disabled={paketUploading}
+                                onChange={handlePaketFileChange}
+                                className="sr-only"
+                              />
+                            </label>
+                            {/* Preview */}
+                            {paketForm.foto.startsWith('data:') && (
+                              <div className="relative w-full h-32 rounded-xl overflow-hidden border border-border">
+                                <img src={paketForm.foto} alt="Preview" className="w-full h-full object-cover" />
+                                <button
+                                  type="button"
+                                  onClick={() => setPaketForm(p => ({ ...p, foto: EMPTY_PAKET.foto }))}
+                                  className="absolute top-2 right-2 p-1 bg-destructive text-white rounded-full hover:bg-destructive/90"
+                                >
+                                  <X size={12} />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                       <div className="sm:col-span-2">
                         <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Deskripsi</label>
@@ -732,24 +846,87 @@ export default function AdminPage() {
               {/* Add Galeri Modal */}
               {showGaleriForm && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                  <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowGaleriForm(false)} />
+                  <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { setShowGaleriForm(false); setGaleriUploadMode('url'); setGaleriForm({ foto: '', kategori: '', deskripsi: '' }) }} />
                   <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md">
                     <div className="flex items-center justify-between px-6 py-4 border-b border-border">
                       <h3 className="font-serif font-semibold text-lg">Tambah Foto Galeri</h3>
-                      <button onClick={() => setShowGaleriForm(false)} className="p-1 rounded-full hover:bg-muted">
+                      <button onClick={() => { setShowGaleriForm(false); setGaleriUploadMode('url'); setGaleriForm({ foto: '', kategori: '', deskripsi: '' }) }} className="p-1 rounded-full hover:bg-muted">
                         <X size={18} />
                       </button>
                     </div>
                     <form onSubmit={handleAddGaleri} className="p-6 flex flex-col gap-4">
                       <div>
-                        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">URL Foto</label>
-                        <input
-                          required
-                          value={galeriForm.foto}
-                          onChange={e => setGaleriForm(p => ({ ...p, foto: e.target.value }))}
-                          placeholder="https://placehold.co/400x500?text=..."
-                          className="w-full px-4 py-2.5 border border-input rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                        />
+                        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Foto</label>
+                        {/* Toggle mode */}
+                        <div className="flex rounded-lg border border-input overflow-hidden mb-2.5">
+                          <button
+                            type="button"
+                            onClick={() => { setGaleriUploadMode('url'); setGaleriForm(p => ({ ...p, foto: '' })) }}
+                            className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors ${galeriUploadMode === 'url' ? 'bg-primary text-primary-foreground' : 'bg-white hover:bg-muted'}`}
+                          >
+                            <Link size={12} /> URL Link
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setGaleriUploadMode('file'); setGaleriForm(p => ({ ...p, foto: '' })) }}
+                            className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors ${galeriUploadMode === 'file' ? 'bg-primary text-primary-foreground' : 'bg-white hover:bg-muted'}`}
+                          >
+                            <Upload size={12} /> Upload File
+                          </button>
+                        </div>
+
+                        {galeriUploadMode === 'url' ? (
+                          <input
+                            required
+                            value={galeriForm.foto}
+                            onChange={e => setGaleriForm(p => ({ ...p, foto: e.target.value }))}
+                            placeholder="https://placehold.co/400x500?text=..."
+                            className="w-full px-4 py-2.5 border border-input rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                          />
+                        ) : (
+                          <div className="space-y-2">
+                            <label className={`flex flex-col items-center justify-center gap-2 w-full h-32 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${galeriUploading ? 'opacity-60 cursor-not-allowed border-muted' : 'border-primary/40 hover:bg-primary/5 hover:border-primary/60'}`}>
+                              {galeriUploading ? (
+                                <>
+                                  <Loader2 size={22} className="animate-spin text-primary" />
+                                  <span className="text-xs text-muted-foreground">Memuat foto...</span>
+                                </>
+                              ) : galeriForm.foto.startsWith('data:') ? (
+                                <>
+                                  <CheckCircle2 size={22} className="text-green-600" />
+                                  <span className="text-xs text-green-700 font-medium">Foto berhasil dimuat</span>
+                                  <span className="text-xs text-muted-foreground">Klik untuk ganti</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Upload size={22} className="text-primary/60" />
+                                  <span className="text-xs text-muted-foreground">Klik untuk pilih foto dari perangkat</span>
+                                  <span className="text-xs text-muted-foreground/60">JPG, PNG, WEBP — maks. 5 MB</span>
+                                </>
+                              )}
+                              <input
+                                type="file"
+                                accept="image/*"
+                                disabled={galeriUploading}
+                                onChange={handleGaleriFileChange}
+                                className="sr-only"
+                              />
+                            </label>
+                            {/* Preview */}
+                            {galeriForm.foto.startsWith('data:') && (
+                              <div className="relative w-full h-36 rounded-xl overflow-hidden border border-border">
+                                <img src={galeriForm.foto} alt="Preview" className="w-full h-full object-cover" />
+                                <button
+                                  type="button"
+                                  onClick={() => setGaleriForm(p => ({ ...p, foto: '' }))}
+                                  className="absolute top-2 right-2 p-1 bg-destructive text-white rounded-full hover:bg-destructive/90"
+                                >
+                                  <X size={12} />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                       <div>
                         <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Kategori</label>
@@ -775,10 +952,10 @@ export default function AdminPage() {
                         />
                       </div>
                       <div className="flex gap-3 pt-1">
-                        <button type="button" onClick={() => setShowGaleriForm(false)} className="flex-1 py-3 border border-border rounded-xl text-sm">
+                        <button type="button" onClick={() => { setShowGaleriForm(false); setGaleriUploadMode('url'); setGaleriForm({ foto: '', kategori: '', deskripsi: '' }) }} className="flex-1 py-3 border border-border rounded-xl text-sm">
                           Batal
                         </button>
-                        <button type="submit" className="flex-1 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors">
+                        <button type="submit" disabled={galeriUploading} className="flex-1 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
                           Tambah Foto
                         </button>
                       </div>
