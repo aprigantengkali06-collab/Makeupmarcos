@@ -13,7 +13,8 @@ import AuthModal from '@/components/AuthModal'
 import PaketDetailModal from '@/components/PaketDetailModal'
 import BookingModal from '@/components/BookingModal'
 import WhatsAppButton from '@/components/WhatsAppButton'
-import { getPaket, getGaleri, getTestimoni, getCurrentUser } from '@/lib/data'
+import { getPaket, getGaleri, getTestimoni } from '@/lib/data'
+import { getCurrentUser } from '@/lib/db'
 import type { PaketMakeup, User } from '@/lib/data'
 
 export default function HomePage() {
