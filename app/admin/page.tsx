@@ -6,7 +6,7 @@ import {
   LayoutDashboard, ShoppingBag, Package2, Images, MessageSquare,
   Users, LogOut, ArrowLeft, Menu, X, Plus, Pencil, Trash2,
   CheckCircle2, XCircle, Clock, Eye, ChevronRight,
-  TrendingUp, Star, AlertCircle, Upload, Link, Loader2,
+  TrendingUp, Star, AlertCircle, Upload, Loader2,
 } from 'lucide-react'
 import {
   getAllBookings, updateBooking, getAllCustomers,
