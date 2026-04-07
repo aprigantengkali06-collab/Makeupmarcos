@@ -9,12 +9,13 @@ import {
   TrendingUp, Star, AlertCircle,
 } from 'lucide-react'
 import {
-  getBookings, saveBookings, updateBooking,
+  getAllBookings, updateBooking, getAllCustomers,
+  getCurrentUser, setCurrentUser,
+} from '@/lib/db'
+import {
   getPaket, savePaket,
-  getUsers,
   getGaleri, saveGaleri,
   getTestimoni, saveTestimoni,
-  getCurrentUser, setCurrentUser,
   formatRupiah, formatDate,
   STATUS_LABEL, STATUS_COLOR,
   PAKET_DATA,
@@ -66,12 +67,11 @@ export default function AdminPage() {
   const [filterStatus, setFilterStatus] = useState<string>('semua')
 
   useEffect(() => {
-    setBookings(getBookings())
+    getAllBookings().then(b => setBookings(b))
+    getAllCustomers().then(c => setCustomerList(c))
     setPaketList(getPaket())
     setGaleriList(getGaleri())
     setTestimoniList(getTestimoni())
-    const allUsers = getUsers().filter(u => u.role === 'customer')
-    setCustomerList(allUsers)
   }, [])
 
   const handleLogout = () => {
@@ -80,21 +80,24 @@ export default function AdminPage() {
   }
 
   // ─── Pesanan handlers ───────────────────────────────────────────────────────
-  const handleKonfirmasi = (id: string) => {
-    updateBooking(id, { status: 'dikonfirmasi' })
-    setBookings(getBookings())
+  const handleKonfirmasi = async (id: string) => {
+    await updateBooking(id, { status: 'dikonfirmasi' })
+    const fresh = await getAllBookings()
+    setBookings(fresh)
     if (detailBooking?.id === id) setDetailBooking(b => b ? { ...b, status: 'dikonfirmasi' } : null)
   }
 
-  const handleSelesai = (id: string) => {
-    updateBooking(id, { status: 'selesai' })
-    setBookings(getBookings())
+  const handleSelesai = async (id: string) => {
+    await updateBooking(id, { status: 'selesai' })
+    const fresh = await getAllBookings()
+    setBookings(fresh)
     if (detailBooking?.id === id) setDetailBooking(b => b ? { ...b, status: 'selesai' } : null)
   }
 
-  const handleTolak = (id: string) => {
-    updateBooking(id, { status: 'dibatalkan' })
-    setBookings(getBookings())
+  const handleTolak = async (id: string) => {
+    await updateBooking(id, { status: 'dibatalkan' })
+    const fresh = await getAllBookings()
+    setBookings(fresh)
     if (detailBooking?.id === id) setDetailBooking(b => b ? { ...b, status: 'dibatalkan' } : null)
   }
 
