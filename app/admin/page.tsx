@@ -6,7 +6,7 @@ import {
   LayoutDashboard, ShoppingBag, Package2, Images, MessageSquare,
   Users, LogOut, ArrowLeft, Menu, X, Plus, Pencil, Trash2,
   CheckCircle2, XCircle, Clock, Eye, ChevronRight,
-  TrendingUp, Star, AlertCircle, Upload, Loader2,
+  TrendingUp, Star, AlertCircle, Upload, Link as LinkIcon, Loader2,
 } from 'lucide-react'
 import {
   getAllBookings, updateBooking, getAllCustomers,
@@ -679,7 +679,7 @@ export default function AdminPage() {
                             onClick={() => setPaketUploadMode('url')}
                             className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors ${paketUploadMode === 'url' ? 'bg-primary text-primary-foreground' : 'bg-white hover:bg-muted'}`}
                           >
-                            <Link size={12} /> URL Link
+                            <LinkIcon size={12} /> URL Link
                           </button>
                           <button
                             type="button"
@@ -864,7 +864,7 @@ export default function AdminPage() {
                             onClick={() => { setGaleriUploadMode('url'); setGaleriForm(p => ({ ...p, foto: '' })) }}
                             className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors ${galeriUploadMode === 'url' ? 'bg-primary text-primary-foreground' : 'bg-white hover:bg-muted'}`}
                           >
-                            <Link size={12} /> URL Link
+                            <LinkIcon size={12} /> URL Link
                           </button>
                           <button
                             type="button"
