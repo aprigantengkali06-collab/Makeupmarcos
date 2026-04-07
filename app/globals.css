@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* ── Rose-Gold Wedding Palette ─────────────────────────────── */
+  --background: 30 50% 98%;           /* warm off-white */
+  --foreground: 20 15% 12%;           /* deep warm black */
+
+  --card: 0 0% 100%;
+  --card-foreground: 20 15% 12%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 20 15% 12%;
+
+  --primary: 28 45% 52%;              /* rose gold */
+  --primary-foreground: 0 0% 98%;    /* white on rose gold */
+
+  --secondary: 30 30% 93%;
+  --secondary-foreground: 20 15% 12%;
+
+  --muted: 30 25% 95%;
+  --muted-foreground: 20 10% 46%;
+
+  --accent: 340 30% 92%;             /* soft blush accent */
+  --accent-foreground: 20 15% 12%;
+
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 98%;
+
+  --border: 30 20% 88%;
+  --input: 30 20% 88%;
+  --ring: 28 45% 52%;                 /* focus ring = rose gold */
+
+  --radius: 0.75rem;
+
+  /* ── Custom CSS variables used inline ───────────────────────── */
+  --rose-gold: hsl(28 45% 52%);
+  --cream: hsl(30 50% 97%);
+}
+
+* {
+  border-color: hsl(var(--border));
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-lato), Lato, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Smooth scroll for anchor links ─────────────────────────────── */
+[id] {
+  scroll-margin-top: 5rem;
+}
