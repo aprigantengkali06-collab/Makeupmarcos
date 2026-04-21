@@ -11,14 +11,14 @@ import {
 import {
   getAllBookings, updateBooking, getAllCustomers,
   getCurrentUser, setCurrentUser,
+  getPaket, createPaket, updatePaket, deletePaket, resetPaket,
+  getGaleri, createGaleri, deleteGaleri,
+  uploadImage,
 } from '@/lib/db'
 import {
-  getPaket, savePaket,
-  getGaleri, saveGaleri,
   getTestimoni, saveTestimoni,
   formatRupiah, formatDate,
   STATUS_LABEL, STATUS_COLOR,
-  PAKET_DATA,
 } from '@/lib/data'
 import type { Booking, PaketMakeup, User, GaleriItem, Testimoni } from '@/lib/data'
 
@@ -61,10 +61,12 @@ export default function AdminPage() {
   const [galeriForm, setGaleriForm] = useState({ foto: '', kategori: '', deskripsi: '' })
   const [galeriUploadMode, setGaleriUploadMode] = useState<'url' | 'file'>('url')
   const [galeriUploading, setGaleriUploading] = useState(false)
+  const [galeriFileReady, setGaleriFileReady] = useState(false)
 
   // Paket upload mode
   const [paketUploadMode, setPaketUploadMode] = useState<'url' | 'file'>('url')
   const [paketUploading, setPaketUploading] = useState(false)
+  const [paketFileReady, setPaketFileReady] = useState(false)
 
   // Detail pesanan modal
   const [detailBooking, setDetailBooking] = useState<Booking | null>(null)
@@ -75,29 +77,22 @@ export default function AdminPage() {
   useEffect(() => {
     getAllBookings().then(b => setBookings(b))
     getAllCustomers().then(c => setCustomerList(c))
-    setPaketList(getPaket())
-    setGaleriList(getGaleri())
+    getPaket().then(p => setPaketList(p))
+    getGaleri().then(g => setGaleriList(g))
     setTestimoniList(getTestimoni())
   }, [])
-
-  // ─── Helper: baca file jadi base64 data URL ─────────────────────────────────
-  const readFileAsBase64 = (file: File): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(reader.result as string)
-      reader.onerror = reject
-      reader.readAsDataURL(file)
-    })
 
   const handleGaleriFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     setGaleriUploading(true)
+    setGaleriFileReady(false)
     try {
-      const base64 = await readFileAsBase64(file)
-      setGaleriForm(p => ({ ...p, foto: base64 }))
+      const url = await uploadImage(file)
+      setGaleriForm(p => ({ ...p, foto: url }))
+      setGaleriFileReady(true)
     } catch {
-      alert('Gagal membaca file. Coba lagi.')
+      alert('Gagal upload foto ke server. Coba lagi.')
     } finally {
       setGaleriUploading(false)
     }
@@ -107,11 +102,13 @@ export default function AdminPage() {
     const file = e.target.files?.[0]
     if (!file) return
     setPaketUploading(true)
+    setPaketFileReady(false)
     try {
-      const base64 = await readFileAsBase64(file)
-      setPaketForm(p => ({ ...p, foto: base64 }))
+      const url = await uploadImage(file)
+      setPaketForm(p => ({ ...p, foto: url }))
+      setPaketFileReady(true)
     } catch {
-      alert('Gagal membaca file. Coba lagi.')
+      alert('Gagal upload foto ke server. Coba lagi.')
     } finally {
       setPaketUploading(false)
     }
@@ -150,71 +147,93 @@ export default function AdminPage() {
     setPaketForm(EMPTY_PAKET)
     setLayananInput('')
     setPaketUploadMode('url')
+    setPaketFileReady(false)
     setShowPaketForm(true)
   }
 
   const openEditPaket = (p: PaketMakeup) => {
     setEditPaket(p)
     const { id, ...rest } = p
+    void id
     setPaketForm(rest)
     setLayananInput(p.layanan.join('\n'))
-    // Jika foto adalah base64, set ke mode file; jika URL, set ke mode url
-    setPaketUploadMode(p.foto.startsWith('data:') ? 'file' : 'url')
+    setPaketUploadMode('url')
+    setPaketFileReady(false)
     setShowPaketForm(true)
   }
 
-  const handleSavePaket = (e: React.FormEvent) => {
+  const handleSavePaket = async (e: React.FormEvent) => {
     e.preventDefault()
     const layanan = layananInput.split('\n').map(l => l.trim()).filter(Boolean)
     const updated = { ...paketForm, layanan }
-    const all = getPaket()
-    if (editPaket) {
-      const newList = all.map(p => p.id === editPaket.id ? { ...updated, id: editPaket.id } : p)
-      savePaket(newList)
-      setPaketList(newList)
-    } else {
-      const newPaket: PaketMakeup = { ...updated, id: `p${Date.now()}` }
-      const newList = [...all, newPaket]
-      savePaket(newList)
-      setPaketList(newList)
+    try {
+      if (editPaket) {
+        await updatePaket(editPaket.id, { ...updated, id: editPaket.id })
+      } else {
+        const newPaket: PaketMakeup = { ...updated, id: `p${Date.now()}` }
+        await createPaket(newPaket)
+      }
+      const fresh = await getPaket()
+      setPaketList(fresh)
+      setShowPaketForm(false)
+      setPaketFileReady(false)
+    } catch (err) {
+      alert('Gagal menyimpan paket: ' + (err instanceof Error ? err.message : 'Coba lagi.'))
     }
-    setShowPaketForm(false)
   }
 
-  const handleDeletePaket = (id: string) => {
+  const handleDeletePaket = async (id: string) => {
     if (!confirm('Hapus paket ini?')) return
-    const newList = getPaket().filter(p => p.id !== id)
-    savePaket(newList)
-    setPaketList(newList)
+    try {
+      await deletePaket(id)
+      const fresh = await getPaket()
+      setPaketList(fresh)
+    } catch (err) {
+      alert('Gagal hapus paket: ' + (err instanceof Error ? err.message : 'Coba lagi.'))
+    }
   }
 
-  const handleResetPaket = () => {
+  const handleResetPaket = async () => {
     if (!confirm('Reset ke data paket default?')) return
-    savePaket(PAKET_DATA)
-    setPaketList(PAKET_DATA)
+    try {
+      await resetPaket()
+      const fresh = await getPaket()
+      setPaketList(fresh)
+    } catch (err) {
+      alert('Gagal reset paket: ' + (err instanceof Error ? err.message : 'Coba lagi.'))
+    }
   }
 
   // ─── Galeri handlers ────────────────────────────────────────────────────────
-  const handleAddGaleri = (e: React.FormEvent) => {
+  const handleAddGaleri = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!galeriForm.foto) {
       alert('Foto belum dipilih atau URL belum diisi.')
       return
     }
-    const newItem: GaleriItem = { id: `g${Date.now()}`, ...galeriForm }
-    const newList = [...getGaleri(), newItem]
-    saveGaleri(newList)
-    setGaleriList(newList)
-    setGaleriForm({ foto: '', kategori: '', deskripsi: '' })
-    setGaleriUploadMode('url')
-    setShowGaleriForm(false)
+    try {
+      const newItem: GaleriItem = { id: `g${Date.now()}`, ...galeriForm }
+      await createGaleri(newItem)
+      const fresh = await getGaleri()
+      setGaleriList(fresh)
+      setGaleriForm({ foto: '', kategori: '', deskripsi: '' })
+      setGaleriUploadMode('url')
+      setGaleriFileReady(false)
+      setShowGaleriForm(false)
+    } catch (err) {
+      alert('Gagal simpan galeri: ' + (err instanceof Error ? err.message : 'Coba lagi.'))
+    }
   }
 
-  const handleDeleteGaleri = (id: string) => {
+  const handleDeleteGaleri = async (id: string) => {
     if (!confirm('Hapus foto ini dari galeri?')) return
-    const newList = getGaleri().filter(g => g.id !== id)
-    saveGaleri(newList)
-    setGaleriList(newList)
+    try {
+      await deleteGaleri(id)
+      const fresh = await getGaleri()
+      setGaleriList(fresh)
+    } catch (err) {
+      alert('Gagal hapus galeri: ' + (err instanceof Error ? err.message : 'Coba lagi.'))
+    }
   }
 
   // ─── Testimoni handlers ─────────────────────────────────────────────────────
@@ -692,7 +711,7 @@ export default function AdminPage() {
 
                         {paketUploadMode === 'url' ? (
                           <input
-                            value={paketForm.foto.startsWith('data:') ? '' : paketForm.foto}
+                            value={paketFileReady ? '' : paketForm.foto}
                             onChange={e => setPaketForm(p => ({ ...p, foto: e.target.value }))}
                             placeholder="https://placehold.co/400x500?text=..."
                             className="w-full px-4 py-2.5 border border-input rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ring"
@@ -705,7 +724,7 @@ export default function AdminPage() {
                                   <Loader2 size={22} className="animate-spin text-primary" />
                                   <span className="text-xs text-muted-foreground">Memuat foto...</span>
                                 </>
-                              ) : paketForm.foto.startsWith('data:') ? (
+                              ) : paketFileReady ? (
                                 <>
                                   <CheckCircle2 size={22} className="text-green-600" />
                                   <span className="text-xs text-green-700 font-medium">Foto berhasil dimuat</span>
@@ -727,12 +746,12 @@ export default function AdminPage() {
                               />
                             </label>
                             {/* Preview */}
-                            {paketForm.foto.startsWith('data:') && (
+                            {paketFileReady && (
                               <div className="relative w-full h-32 rounded-xl overflow-hidden border border-border">
                                 <img src={paketForm.foto} alt="Preview" className="w-full h-full object-cover" />
                                 <button
                                   type="button"
-                                  onClick={() => setPaketForm(p => ({ ...p, foto: EMPTY_PAKET.foto }))}
+                                  onClick={() => { setPaketForm(p => ({ ...p, foto: EMPTY_PAKET.foto })); setPaketFileReady(false) }}
                                   className="absolute top-2 right-2 p-1 bg-destructive text-white rounded-full hover:bg-destructive/90"
                                 >
                                   <X size={12} />
@@ -891,10 +910,10 @@ export default function AdminPage() {
                                   <Loader2 size={22} className="animate-spin text-primary" />
                                   <span className="text-xs text-muted-foreground">Memuat foto...</span>
                                 </>
-                              ) : galeriForm.foto.startsWith('data:') ? (
+                              ) : galeriFileReady ? (
                                 <>
                                   <CheckCircle2 size={22} className="text-green-600" />
-                                  <span className="text-xs text-green-700 font-medium">Foto berhasil dimuat</span>
+                                  <span className="text-xs text-green-700 font-medium">Foto berhasil diupload</span>
                                   <span className="text-xs text-muted-foreground">Klik untuk ganti</span>
                                 </>
                               ) : (
@@ -913,12 +932,12 @@ export default function AdminPage() {
                               />
                             </label>
                             {/* Preview */}
-                            {galeriForm.foto.startsWith('data:') && (
+                            {galeriFileReady && (
                               <div className="relative w-full h-36 rounded-xl overflow-hidden border border-border">
                                 <img src={galeriForm.foto} alt="Preview" className="w-full h-full object-cover" />
                                 <button
                                   type="button"
-                                  onClick={() => setGaleriForm(p => ({ ...p, foto: '' }))}
+                                  onClick={() => { setGaleriForm(p => ({ ...p, foto: '' })); setGaleriFileReady(false) }}
                                   className="absolute top-2 right-2 p-1 bg-destructive text-white rounded-full hover:bg-destructive/90"
                                 >
                                   <X size={12} />
