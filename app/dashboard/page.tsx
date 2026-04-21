@@ -11,9 +11,10 @@ import {
 import {
   getCurrentUser, setCurrentUser,
   getBookingsByCustomer, updateBooking, addBooking,
+  getPaket,
 } from '@/lib/db'
 import {
-  getPaket, saveTestimoni, getTestimoni,
+  saveTestimoni, getTestimoni,
   formatRupiah, formatDate, STATUS_LABEL, STATUS_COLOR
 } from '@/lib/data'
 import type { User, Booking, PaketMakeup, Testimoni } from '@/lib/data'
@@ -61,7 +62,7 @@ export default function DashboardPage() {
     }
     setUser(u)
     getBookingsByCustomer(u.id).then(b => setBookings(b))
-    setPaketList(getPaket())
+    getPaket().then(p => setPaketList(p))
     setLoading(false)
   }, [])
 
