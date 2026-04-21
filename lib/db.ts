@@ -186,8 +186,9 @@ export async function getPaket(): Promise<PaketMakeup[]> {
     .select('*')
     .order('created_at', { ascending: true })
   if (error || !data || data.length === 0) return PAKET_DATA
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return data.map((d: any) => ({
+  const supabasePakets = data.map((d: any) => ({
     id: d.id,
     nama: d.nama,
     harga: Number(d.harga),
@@ -203,7 +204,19 @@ export async function getPaket(): Promise<PaketMakeup[]> {
     totalReview: Number(d.total_review),
     terlaris: d.terlaris ?? false,
     terbaik: d.terbaik ?? false,
-  }))
+  })) as PaketMakeup[]
+
+  const supabaseIds = new Set(supabasePakets.map(p => p.id))
+
+  // Paket dari PAKET_DATA: pakai versi Supabase jika sudah diedit, hardcode jika belum
+  const merged = PAKET_DATA.map(p =>
+    supabaseIds.has(p.id) ? supabasePakets.find(sp => sp.id === p.id)! : p
+  )
+
+  // Paket baru yang ditambah lewat admin (tidak ada di PAKET_DATA)
+  const newPakets = supabasePakets.filter(sp => !PAKET_DATA.find(p => p.id === sp.id))
+
+  return [...merged, ...newPakets]
 }
 
 export async function createPaket(p: PaketMakeup): Promise<void> {
