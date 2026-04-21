@@ -69,3 +69,59 @@ VALUES (
   NOW()
 )
 ON CONFLICT (email) DO NOTHING;
+
+-- ── Tabel Paket ──────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.paket (
+  id                TEXT        PRIMARY KEY,
+  nama              TEXT        NOT NULL,
+  harga             NUMERIC     NOT NULL,
+  kategori_harga    TEXT        NOT NULL,
+  deskripsi         TEXT,
+  layanan           TEXT[]      NOT NULL DEFAULT '{}',
+  kelengkapan       TEXT        NOT NULL,
+  kualitas_makeup   TEXT        NOT NULL,
+  pengalaman_mua    TEXT        NOT NULL,
+  estetika_dekorasi TEXT        NOT NULL,
+  foto              TEXT,
+  rating            NUMERIC     DEFAULT 0,
+  total_review      INTEGER     DEFAULT 0,
+  terlaris          BOOLEAN     DEFAULT false,
+  terbaik           BOOLEAN     DEFAULT false,
+  created_at        TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ── Tabel Galeri ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.galeri (
+  id         TEXT        PRIMARY KEY,
+  foto       TEXT        NOT NULL,
+  kategori   TEXT,
+  deskripsi  TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ── RLS untuk Paket & Galeri ─────────────────────────────────
+ALTER TABLE public.paket  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.galeri ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "allow_all_paket"
+  ON public.paket FOR ALL
+  USING (true) WITH CHECK (true);
+
+CREATE POLICY "allow_all_galeri"
+  ON public.galeri FOR ALL
+  USING (true) WITH CHECK (true);
+
+-- ── Storage: marcos-images bucket ────────────────────────────
+-- Buat bucket via Dashboard (Storage → New bucket → "marcos-images" → Public ON)
+-- Lalu jalankan policy berikut:
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('marcos-images', 'marcos-images', true)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "allow_public_read_marcos_images"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'marcos-images');
+
+CREATE POLICY "allow_upload_marcos_images"
+  ON storage.objects FOR INSERT
+  WITH CHECK (bucket_id = 'marcos-images');
