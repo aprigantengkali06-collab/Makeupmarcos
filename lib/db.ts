@@ -1,10 +1,10 @@
 /**
  * lib/db.ts — Database layer using Supabase
- * Menggantikan localStorage untuk data Users dan Bookings.
- * Data statis (Paket, Galeri, Testimoni) tetap di lib/data.ts
+ * Menggantikan localStorage untuk data Users, Bookings, Paket, dan Galeri.
  */
 import { supabase } from './supabase'
-import type { User, Booking } from './data'
+import type { User, Booking, PaketMakeup, GaleriItem } from './data'
+import { PAKET_DATA, GALERI_DATA } from './data'
 
 const isBrowser = typeof window !== 'undefined'
 
@@ -178,6 +178,127 @@ function dbRowToBooking(d: any): Booking {
   }
 }
 
+// ── Paket ────────────────────────────────────────────────────
+
+export async function getPaket(): Promise<PaketMakeup[]> {
+  const { data, error } = await supabase
+    .from('paket')
+    .select('*')
+    .order('created_at', { ascending: true })
+  if (error || !data || data.length === 0) return PAKET_DATA
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return data.map((d: any) => ({
+    id: d.id,
+    nama: d.nama,
+    harga: Number(d.harga),
+    kategoriHarga: d.kategori_harga,
+    deskripsi: d.deskripsi,
+    layanan: d.layanan ?? [],
+    kelengkapan: d.kelengkapan,
+    kualitasMakeup: d.kualitas_makeup,
+    pengalamanMUA: d.pengalaman_mua,
+    estetikaDekorasi: d.estetika_dekorasi,
+    foto: d.foto,
+    rating: Number(d.rating),
+    totalReview: Number(d.total_review),
+    terlaris: d.terlaris ?? false,
+    terbaik: d.terbaik ?? false,
+  }))
+}
+
+export async function createPaket(p: PaketMakeup): Promise<void> {
+  const { error } = await supabase.from('paket').insert(paketToDbRow(p))
+  if (error) throw new Error(error.message)
+}
+
+export async function updatePaket(id: string, p: PaketMakeup): Promise<void> {
+  const { id: _id, ...row } = paketToDbRow(p)
+  void _id
+  const { error } = await supabase.from('paket').update(row).eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+export async function deletePaket(id: string): Promise<void> {
+  const { error } = await supabase.from('paket').delete().eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+export async function resetPaket(): Promise<void> {
+  await supabase.from('paket').delete().neq('id', '')
+  const { error } = await supabase.from('paket').insert(PAKET_DATA.map(paketToDbRow))
+  if (error) throw new Error(error.message)
+}
+
+function paketToDbRow(p: PaketMakeup) {
+  return {
+    id: p.id,
+    nama: p.nama,
+    harga: p.harga,
+    kategori_harga: p.kategoriHarga,
+    deskripsi: p.deskripsi,
+    layanan: p.layanan,
+    kelengkapan: p.kelengkapan,
+    kualitas_makeup: p.kualitasMakeup,
+    pengalaman_mua: p.pengalamanMUA,
+    estetika_dekorasi: p.estetikaDekorasi,
+    foto: p.foto,
+    rating: p.rating,
+    total_review: p.totalReview,
+    terlaris: p.terlaris ?? false,
+    terbaik: p.terbaik ?? false,
+  }
+}
+
+// ── Galeri ────────────────────────────────────────────────────
+
+export async function getGaleri(): Promise<GaleriItem[]> {
+  const { data, error } = await supabase
+    .from('galeri')
+    .select('*')
+    .order('created_at', { ascending: false })
+  if (error || !data || data.length === 0) return GALERI_DATA
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return data.map((d: any) => ({
+    id: d.id,
+    foto: d.foto,
+    kategori: d.kategori ?? '',
+    deskripsi: d.deskripsi ?? '',
+  }))
+}
+
+export async function createGaleri(item: GaleriItem): Promise<void> {
+  const { error } = await supabase.from('galeri').insert({
+    id: item.id,
+    foto: item.foto,
+    kategori: item.kategori,
+    deskripsi: item.deskripsi,
+  })
+  if (error) throw new Error(error.message)
+}
+
+export async function deleteGaleri(id: string): Promise<void> {
+  const { error } = await supabase.from('galeri').delete().eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+// ── Storage: Upload Gambar ────────────────────────────────────
+
+/** Upload file gambar ke Supabase Storage, kembalikan public URL */
+export async function uploadImage(file: File): Promise<string> {
+  const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+  const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+
+  const { error } = await supabase.storage
+    .from('marcos-images')
+    .upload(filename, file, { cacheControl: '3600', upsert: false })
+
+  if (error) throw new Error(error.message)
+
+  const { data } = supabase.storage.from('marcos-images').getPublicUrl(filename)
+  return data.publicUrl
+}
+
+// ── Helper: booking row mapping ───────────────────────────────
 function bookingToDbRow(b: Booking) {
   return {
     id: b.id,
