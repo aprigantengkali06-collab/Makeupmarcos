@@ -13,13 +13,14 @@ import AuthModal from '@/components/AuthModal'
 import PaketDetailModal from '@/components/PaketDetailModal'
 import BookingModal from '@/components/BookingModal'
 import WhatsAppButton from '@/components/WhatsAppButton'
-import { getPaket, getGaleri, getTestimoni } from '@/lib/data'
+import { getPaket, getGaleri } from '@/lib/db'
+import { getTestimoni } from '@/lib/data'
 import { getCurrentUser } from '@/lib/db'
-import type { PaketMakeup, User } from '@/lib/data'
+import type { PaketMakeup, GaleriItem, User } from '@/lib/data'
 
 export default function HomePage() {
   const [paketList, setPaketList] = useState<PaketMakeup[]>([])
-  const [galeriList, setGaleriList] = useState<ReturnType<typeof getGaleri>>([])
+  const [galeriList, setGaleriList] = useState<GaleriItem[]>([])
   const [testimoniList, setTestimoniList] = useState<ReturnType<typeof getTestimoni>>([])
   const [user, setUser] = useState<User | null>(null)
 
@@ -29,8 +30,8 @@ export default function HomePage() {
   const [bookingOpen, setBookingOpen] = useState(false)
 
   useEffect(() => {
-    setPaketList(getPaket())
-    setGaleriList(getGaleri())
+    getPaket().then(p => setPaketList(p))
+    getGaleri().then(g => setGaleriList(g))
     setTestimoniList(getTestimoni())
     setUser(getCurrentUser())
   }, [])
