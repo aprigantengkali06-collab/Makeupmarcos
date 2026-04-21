@@ -212,9 +212,7 @@ export async function createPaket(p: PaketMakeup): Promise<void> {
 }
 
 export async function updatePaket(id: string, p: PaketMakeup): Promise<void> {
-  const { id: _id, ...row } = paketToDbRow(p)
-  void _id
-  const { error } = await supabase.from('paket').update(row).eq('id', id)
+  const { error } = await supabase.from('paket').upsert(paketToDbRow(p))
   if (error) throw new Error(error.message)
 }
 
